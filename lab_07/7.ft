@@ -1,0 +1,363 @@
+CREATE text 100 CHARS ALLOT
+CREATE subtext 100 CHARS ALLOT
+CREATE distance 100 CELLS ALLOT
+distance 100 CELLS erase
+
+CREATE slide 256 CELLS ALLOT
+slide 256 CELLS erase
+CREATE jump 256 CELLS ALLOT
+jump 256 CELLS erase
+CREATE link 256 CELLS ALLOT
+
+: [!] ( value index array -- ) swap cells + ! ;
+
+: input
+  pad 4 accept pad swap s>number?  drop  d>s
+;
+
+: time: ( "word" -- )
+  utime 2>R ' EXECUTE
+  utime 2R> D-
+  <# # # # # # # [CHAR] . HOLD #S #> TYPE ."  seconds" ;
+
+  : input_words
+  ." " CR
+  ." Text:" CR
+  text 60 accept
+  ." " CR
+  ." Subtext:" CR
+  subtext 60 accept
+  ;
+: end
+  CR ." END" CR quit
+;
+input_words
+CONSTANT len2
+CONSTANT len1
+
+: equal_words? 0 = if CR ." Words are equal" end then ;
+: second_word_zero? 0 = if CR ." subtext word is zero" CR end then ;
+: first_word_zero? 0 = if CR ." text is zero" CR end then ;
+
+: check_equality 
+  text
+  len1
+  subtext
+  len2
+  compare
+  equal_words?
+;
+
+: check_zero_lenght (  )
+  len2
+  second_word_zero?
+  len1
+  first_word_zero?
+;
+
+: show_d
+  ." dddd:" CR
+  15  0 ?DO ( --  . J - rows i - col )
+  distance I cells + ? LOOP CR  ;
+
+: KMP
+  CR ." KMP: " 
+
+  ( suf pref )
+  0 1 ( j i )
+  BEGIN
+  DUP len2 <
+  WHILE
+  DUP subtext SWAP chars + c@
+  >R
+  OVER subtext SWAP chars + c@
+  R>
+  = IF
+  SWAP 1 + OVER OVER ( i j i j )
+  SWAP distance [!] ( i j )
+  SWAP 1 +
+  ELSE
+    OVER 0=
+    IF 
+      DUP 0 SWAP distance [!]
+      1 +
+    ELSE
+      SWAP 1 - distance swap cells + @ SWAP
+    THEN
+  THEN
+  REPEAT
+  DROP DROP
+  ( find subtext in text )
+  0 0 ( j i )
+  BEGIN
+  DUP len1 <
+  WHILE
+  OVER subtext SWAP chars + c@
+  OVER text SWAP chars + c@
+  =
+  IF 
+  1 + SWAP 1 + SWAP
+  THEN
+    OVER len2 = 
+    IF
+    OVER OVER SWAP - .
+    SWAP 1 - distance SWAP cells + @ SWAP
+    ELSE
+    DUP len1 < >R
+    OVER subtext SWAP chars + c@
+    OVER text SWAP chars + c@
+    <>
+    R>
+    AND IF
+    OVER 0 = 
+    IF
+    1 + 
+    ELSE
+    SWAP 1 - distance swap cells + @ SWAP
+  THEN
+  THEN
+  THEN
+  REPEAT
+  DROP DROP
+;
+
+
+: BM2
+  CR ." Boyer–Moore: " 
+
+  ( suf pref )
+  0 1 ( j i )
+  BEGIN
+  DUP len2 <
+  WHILE
+  DUP subtext SWAP chars + c@
+  >R
+  OVER subtext SWAP chars + c@
+  R>
+  = IF
+  SWAP 1 + OVER OVER ( i j i j )
+  SWAP distance [!] ( i j )
+  SWAP 1 +
+  ELSE
+    OVER 0=
+    IF 
+      DUP 0 SWAP distance [!]
+      1 +
+    ELSE
+      SWAP 1 - distance swap cells + @ SWAP
+    THEN
+  THEN
+  REPEAT
+  DROP DROP
+  ( find subtext in text )
+  0 0 ( j i )
+  BEGIN
+  DUP len1 <
+  WHILE
+  OVER subtext SWAP chars + c@
+  OVER text SWAP chars + c@
+  =
+  IF 
+  1 + SWAP 1 + SWAP
+  THEN
+    OVER len2 = 
+    IF
+    OVER OVER SWAP - .
+    SWAP 1 - distance SWAP cells + @ SWAP
+    ELSE
+    DUP len1 < >R
+    OVER subtext SWAP chars + c@
+    OVER text SWAP chars + c@
+    <>
+    R>
+    AND IF
+    OVER 0 = 
+    IF
+    1 + 
+    ELSE
+    SWAP 1 - distance swap cells + @ SWAP
+  THEN
+  THEN
+  THEN
+  REPEAT
+  DROP DROP
+;
+
+: KMP_time
+  CR ." KMP: " 
+
+  ( suf pref )
+  0 1 ( j i )
+  BEGIN
+  DUP len2 <
+  WHILE
+  DUP subtext SWAP chars + c@
+  >R
+  OVER subtext SWAP chars + c@
+  R>
+  = IF
+  SWAP 1 + OVER OVER ( i j i j )
+  SWAP distance [!] ( i j )
+  SWAP 1 +
+  ELSE
+    OVER 0=
+    IF 
+      DUP 0 SWAP distance [!]
+      1 +
+    ELSE
+      SWAP 1 - distance swap cells + @ SWAP
+    THEN
+  THEN
+  REPEAT
+  DROP DROP
+  ( find subtext in text )
+  0 0 ( j i )
+  BEGIN
+  DUP len1 <
+  WHILE
+  OVER subtext SWAP chars + c@
+  OVER text SWAP chars + c@
+  =
+  IF 
+  1 + SWAP 1 + SWAP
+  THEN
+    OVER len2 = 
+    IF
+    OVER OVER SWAP - drop
+    SWAP 1 - distance SWAP cells + @ SWAP
+    ELSE
+    DUP len1 < >R
+    OVER subtext SWAP chars + c@
+    OVER text SWAP chars + c@
+    <>
+    R>
+    AND IF
+    OVER 0 = 
+    IF
+    1 + 
+    ELSE
+    SWAP 1 - distance swap cells + @ SWAP
+  THEN
+  THEN
+  THEN
+  REPEAT
+  DROP DROP
+;
+
+
+: BM_dd
+  CR ." Boyer–Moore: "
+  256 0 ?DO
+  len2 I slide [!]
+  LOOP
+
+  len2 1 ?DO
+  len2 I - subtext I chars + c@ slide [!]
+  LOOP
+
+  ( макс. значение прыжка )
+  len2 1 ?DO
+  len2 2 * I - I jump [!]
+  LOOP
+
+  ( сравнение окончания образа с его предыдущими символами )
+  len2 len2 1 + ( test target )
+  BEGIN
+  OVER 0 >
+  WHILE
+  OVER OVER SWAP link [!]
+    BEGIN
+    DUP len2 <=
+    >R
+    OVER subtext SWAP chars + c@
+    OVER subtext SWAP chars + c@
+    <>
+    R>
+    AND
+    WHILE
+    OVER OVER
+    jump  cells + @
+    REPEAT
+    1 - SWAP 1 - SWAP
+  REPEAT
+;
+: show_array ( -- )
+  256 0 ?DO
+  slide I cells + ?
+  LOOP
+;
+
+: BM1
+  CR ." Boyer–Moore: "
+  256 0 ?DO
+  -1 I slide [!]
+  LOOP
+  len2 0 ?DO
+  I subtext I chars + c@ slide [!]
+  LOOP
+
+  len2 len1 0 ( pat txt s )
+  BEGIN
+  >R
+  OVER OVER SWAP - 
+  R> ( pat txt raz s)
+  DUP ROT
+  <=
+  WHILE
+  len2 1 - ( pat txt s j ) 
+    BEGIN
+    DUP 0 >= >R
+    DUP subtext SWAP chars + c@
+    >R
+    OVER OVER + text SWAP chars + c@
+    R> 
+    =
+    R>
+    AND
+    WHILE
+    1 -
+    REPEAT
+  DUP 0 < IF
+  OVER .
+  ( m n s j )
+  >R 
+  >R ( data: m n ret: j s )
+  OVER R> ( m n m s)
+  DUP ROT ( m n s s m )
+  + ( m n s sum )
+  >R OVER ( m n s n ) R> ( m n s n summ) >
+  R> SWAP
+  IF
+    ( m n s j )
+    >R >R OVER ( m n m )
+    R> DUP >R + ( m n summ ret: j s )
+    text SWAP chars + c@ slide SWAP cells + @
+    ( m n huina ) >R OVER R> -
+    R>
+    +
+    R>
+    ELSE
+    SWAP 1 + SWAP
+    THEN
+
+  ELSE
+  ( m n s j )
+  OVER OVER + text SWAP chars + c@
+  slide SWAP cells + @
+  OVER SWAP -
+  1
+  MAX
+  ( m n s j maxik )
+  ROT + SWAP
+  THEN
+  DROP
+  REPEAT
+;
+
+
+
+
+check_equality 
+check_zero_lenght
+KMP
+BM1

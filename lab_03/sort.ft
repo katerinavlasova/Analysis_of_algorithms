@@ -1,0 +1,209 @@
+
+: [!] ( value index array -- ) swap cells + ! ;
+: input
+  pad 4 accept pad swap s>number?  drop  d>s
+;
+
+: time: ( "word" -- ) 
+utime 2>R ' EXECUTE 
+utime 2R> D- 
+<# # # # # # # [CHAR] . HOLD #S #> TYPE ." seconds" ;
+
+CR ." 1.Operational mode" CR ." 2.User mode" CR
+input
+
+CR ." Lenght of array:"
+input
+CONSTANT array_size
+
+
+CREATE array array_size CELLS ALLOT
+CREATE array_2 array_size CELLS ALLOT
+: show_array ( -- )
+  array_size 0 ?DO
+  array I cells + ?
+  LOOP
+;
+
+: enter_array ( input from keyboard )
+  array_size 0 ?DO
+  ." Input: " input I array [!] CR
+  LOOP
+;
+
+: copy_from_array
+  array_size 0 ?DO
+  array I cells + @
+  I array_2 [!]
+  LOOP
+;
+
+: copy_to_array
+  array_size 0 ?DO
+  array_2 I cells + @
+  I array [!]
+  LOOP
+;
+
+: bubble_sort ( -- )
+  0
+  BEGIN
+  0= ( flag 0 true -1 false)
+  WHILE
+  -1
+   array_size 1 - 0 ?DO
+   array I cells + @ array I 1 + cells + @ > ( a[i] > a[i + 1])
+   IF
+   array I cells + @
+   array I 1 + cells + @
+   I array [!]
+   I 1 + array [!]
+   DROP 0
+   THEN
+   LOOP
+  REPEAT
+;
+
+: insertion_sort ( -- )
+  1
+  BEGIN
+  DUP array_size <
+  WHILE
+  DUP array SWAP cells + @
+  OVER 1 -
+    BEGIN
+    OVER OVER ( a[i] j  a[i] j ) DUP array SWAP cells + @ ( a[i] j  a[i] j a[j] ) 
+    SWAP 0>= rot rot  ( a[i] j ans a[i] a[j] ) < AND
+    WHILE ( a[i] j )
+    dup array SWAP cells + @
+    OVER 1 + array [!]
+    1 -
+    REPEAT
+  DUP 1 + ROT SWAP array [!] drop
+  1 +
+  REPEAT
+
+;
+
+: shaker_sort ( -- )
+  0 array_size 1 -
+  BEGIN
+  OVER OVER <
+  WHILE
+  OVER OVER SWAP ?DO
+   array I cells + @
+   array I 1 + cells + @ ( a[i]> a[i + 1] )
+   > IF 
+   array I cells + @
+   array I 1 + cells + @
+   I array [!]
+   I 1 + array [!]
+   THEN
+   LOOP
+  
+  SWAP 1 + SWAP ( left + 1 right )
+  OVER OVER < IF
+  OVER OVER ?DO
+   array I 1 - cells + @
+   array I cells + @ ( a[i - 1] > a[i] )
+   > IF
+   array I 1 - cells + @
+   array I cells + @ 
+   I 1 - array [!]
+   I array [!]
+   THEN
+  -1 ( left right - 1 )
+  +LOOP
+   THEN
+  1 -
+  REPEAT
+;
+
+
+
+
+( Random number generation -- High level )
+VARIABLE rnd   HERE rnd !
+: RANDOM  rnd @ 31421 *  6927 +  DUP rnd ! ;
+: CHOOSE  ( u1 -- u2 )  RANDOM UM*  NIP ;
+
+: sorted_array
+array_size 0 ?DO
+I I array [!]
+LOOP 
+;
+
+: unsorted_array
+array_size 0 ?DO
+array_size I - I array [!]
+LOOP 
+;
+
+: Random_array
+  array_size 0 ?DO
+  100 choose I array [!]
+  LOOP
+;
+
+: mode
+2 = IF
+
+CR ." INPUT NUMBERS: (number - enter)" CR
+clearstack
+enter_array
+copy_from_array
+clearstack
+cr ." Array:"
+show_array CR
+insertion_sort
+CR ." INSERTION SORT:"
+show_array
+copy_to_array
+cr ." BUBBLE SORT:   "
+bubble_sort
+show_array
+copy_to_array
+cr ." SHAKER SORT:   "
+clearstack
+shaker_sort
+show_array
+CR
+." END"
+clearstack
+quit
+THEN ;
+mode
+
+sorted_array
+CR ." SORTED ARRAY: CR
+CR ." Time for bubble sort:"
+time: bubble_sort
+CR ." Time for insertion sort:"
+time: insertion_sort
+CR ." Time for shaker sort:"
+time: shaker_sort
+
+cr cr cr
+." UNSORTED ARRAY: CR
+unsorted_array
+CR ." Time for bubble sort:"
+time: bubble_sort
+unsorted_array
+CR ." Time for insertion sort:"
+time: insertion_sort
+unsorted_array
+CR ." Time for shaker sort:"
+time: shaker_sort
+
+CR CR CR
+." RANDOM ARRAY:" CR 
+Random_array
+copy_from_array
+CR ." Time for bubble sort:"
+time: bubble_sort
+copy_to_array
+CR ." Time for insertion sort:"
+time: insertion_sort
+copy_to_array
+CR ." Time for shaker sort:"
+time: shaker_sort

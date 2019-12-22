@@ -1,0 +1,283 @@
+: [!] ( value index array -- ) swap cells + ! ;
+: [!1] ( index value index array -- ) cells + ! ;
+: input
+  pad 4 accept pad swap s>number?  drop  d>s
+;
+
+: time: ( "word" -- ) 
+utime 2>R ' EXECUTE 
+utime 2R> D- 
+<# # # # # # # [CHAR] . HOLD #S #> TYPE ." seconds" ;
+
+CR ." 1. OPERATIONAL MODE." CR ." 2. USER MODE." CR
+input
+CR ." Number of rows of the first matrix:" CR
+input
+CONSTANT rows1
+
+CR ." Number of columns of the first matrix: " CR
+input
+CONSTANT columns1
+
+rows1 columns1 * 
+CONSTANT size1
+
+CR ." Number of rows of the second matrix:" CR
+input
+CONSTANT rows2
+
+CR ." Number of columns of the second matrix: " CR
+input
+CONSTANT columns2
+
+rows2 columns2 * 
+CONSTANT size2
+
+CREATE matrix1 rows1 columns1 * CELLS ALLOT
+CREATE matrix2 rows2 columns2 * CELLS ALLOT
+CREATE result rows1 columns2 * CELLS ALLOT
+: show_matrix1
+  ." FIRST MATRIX:" CR
+  rows1  0 ?DO ( --  . J - rows i - col )
+  columns1 0 ?DO matrix1 J columns1 * I + cells + ? LOOP CR LOOP ;
+
+: show_matrix2
+  ." SECOND MATRIX:" CR
+  rows2  0 ?DO ( --  . J - rows i - col )
+  columns2 0 ?DO matrix2 J columns2 * I + cells + ? LOOP CR LOOP ;
+
+: show_result
+  rows1  0 ?DO ( --  . J - rows i - col )
+  columns2 0 ?DO result J columns2 * I + cells + ? LOOP CR LOOP ;
+
+: enter_matrix1 (  -- . input from keyboard )
+  size1 0 ?DO
+  ." Input: " input I matrix1 [!] CR
+  LOOP
+;
+
+: enter_matrix2 (  -- . input from keyboard )
+  size2 0 ?DO
+  ." Input: " input I matrix2 [!] CR
+  LOOP
+;
+
+: possible_multi?
+  columns1 rows2 = IF CR ." Multip. is possible" CR
+  ELSE
+  CR ." MULTIP IS IMPOSSIBLE" CR quit THEN ;
+
+: matrix_multi ( -- . outer to inner:  K J I)
+  rows1 0 ?DO
+  columns2 0 ?DO
+  0
+  columns1 0 ?DO
+  matrix1 K columns1 * I + cells + @
+  matrix2 I columns2 * J + cells + @
+  *
+  +
+  dup K columns2 * J + result [!]
+  LOOP
+  drop 
+  LOOP LOOP
+;
+
+
+CREATE row_factor rows1 CELLS ALLOT
+CREATE column_factor columns2 CELLS ALLOT
+row_factor rows1 erase
+column_factor columns2 erase
+rows2 2 /
+CONSTANT d
+rows2 2 MOD
+CONSTANT req
+: opt_winograd
+  ( ROW FACTOR)
+  rows1 0 ?DO
+  0
+  d 0 ?DO
+  matrix1 J columns1 * 2 I * + cells + @
+  matrix1 J columns1 * 2 I * 1 + + cells + @
+  *
+  +
+  LOOP
+  I row_factor [!]
+  LOOP
+
+  ( COLUMN FACTOR )
+  columns2 0 ?DO
+  0
+  d 0 ?DO
+  matrix2 2 I columns2 * * J + cells + @
+  matrix2 2 I columns2 * * J + columns2 + cells + @
+  *
+  +
+  LOOP
+  I column_factor [!]
+  LOOP
+  ( MULTIPLICATION )
+  rows1 0 ?DO
+  columns2 0 ?DO
+  row_factor J cells + @
+  column_factor I cells + @
+  +
+  -1 *
+  J columns2 * I + result [!]
+  result J columns2 * I + cells + @
+  d 0 ?DO
+  
+  matrix1 K columns1 * I 2 * + cells + @
+  matrix2 I columns2 2 * * J + columns2 + cells + @
+  +
+  matrix1 K columns1 * I 2 * + 1 + cells + @
+  matrix2 I columns2 2 * * J + cells + @
+   + * +
+  LOOP
+  J columns2 * I + result [!]
+  req 1 = IF
+  result J columns2 * I + cells + @
+  matrix1 J columns1 * rows2 1 - + cells + @
+  matrix2 rows2 1 - columns2 * I + cells + @
+  *
+  +
+  J columns2 * I + result [!]
+  THEN
+  LOOP LOOP
+;
+
+: winograd
+  ( ROW FACTOR)
+  rows1 0 ?DO
+  rows2 2 / 0 ?DO
+  row_factor J cells + @
+  matrix1 J columns1 * 2 I * + cells + @
+  matrix1 J columns1 * 2 I * 1 + + cells + @
+  *
+  +
+  J row_factor [!]
+  LOOP
+  LOOP
+
+  ( COLUMN FACTOR )
+  columns2 0 ?DO
+  rows2 2 / 0 ?DO
+  column_factor J cells + @
+  matrix2 2 I columns2 * * J + cells + @
+  matrix2 2 I columns2 * * J + columns2 + cells + @
+  *
+  +
+  J column_factor [!]
+  LOOP
+  LOOP
+
+  ( MULTIPLICATION )
+  rows1 0 ?DO
+  columns2 0 ?DO
+  row_factor J cells + @
+  column_factor I cells + @
+  +
+  -1 *
+  J columns2 * I + result [!]
+  0
+  d 0 ?DO
+  matrix1 K columns1 * I 2 * + cells + @
+  matrix2 I columns2 2 * * J + columns2 + cells + @
+  +
+  matrix1 K columns1 * I 2 * + 1 + cells + @
+  matrix2 I columns2 2 * * J + cells + @
+   + *  +
+  LOOP
+  result J columns2 * I + cells + @
+  +
+
+  J columns2 * I + result [!]
+  LOOP LOOP
+
+
+  req 1 = IF
+  rows1 0 ?DO
+  columns2 0 ?DO
+  result J columns2 * I + cells + @
+  matrix1 J columns1 * rows2 1 - + cells + @
+  matrix2 rows2 1 - columns2 * I + cells + @
+  *
+  +
+  J columns2 * I + result [!]
+  LOOP LOOP
+  THEN
+;
+
+: rowfa
+ rows1 0 ?DO
+ row_factor I  cells + ?
+ LOOP
+;
+: colfa
+ columns2 0 ?DO
+ column_factor I  cells + ?
+ LOOP
+;
+
+possible_multi?
+
+: mode 2 = IF 
+." INPUT FIRST MATRIX: " CR
+enter_matrix1
+." INPUT SECOND MATRIX: " CR 
+enter_matrix2
+
+CR CR
+show_matrix1
+show_matrix2
+clearstack
+
+CR ." CLASSIC MATRIX MULT.:" CR
+matrix_multi
+show_result
+clearstack
+
+CR ." WINOGRAD ALGORITHM:" CR
+row_factor rows1 CELLS erase
+column_factor columns2 CELLS erase
+result rows1 columns2 * CELLS erase
+winograd
+show_result
+CR ." OPTIMIZED WINOGRAD ALGORITHM:" CR
+row_factor rows1 CELLS erase
+column_factor columns2 CELLS erase
+result rows1 columns2 * CELLS erase
+opt_winograd
+show_result
+clearstack
+quit
+THEN ; 
+mode
+
+
+( Random number generation -- High level )
+VARIABLE rnd   HERE rnd !
+: RANDOM  rnd @ 31421 *  6927 +  DUP rnd ! ;
+: CHOOSE  ( u1 -- u2 )  RANDOM UM*  NIP ;
+
+: fill_matrix1
+  rows1  0 ?DO ( --  . J - rows i - col )
+  columns1 0 ?DO 100 CHOOSE J columns1 * I + matrix1 [!] LOOP LOOP 
+;
+
+: fill_matrix2
+  rows2  0 ?DO ( --  . J - rows i - col )
+  columns2 0 ?DO 100 CHOOSE J columns1 * I + matrix2 [!] LOOP LOOP 
+;
+
+fill_matrix1
+fill_matrix2
+CR ." CLASSIC MATRIX MULT.:" CR
+time: matrix_multi
+
+CR ." WINOGRAD ALGORITHM:" CR
+time: winograd
+CR ." OPTIMIZED WINOGRAD ALGORITHM:" CR
+row_factor rows1 CELLS erase
+column_factor columns2 CELLS erase
+result rows1 columns2 * CELLS erase
+time: opt_winograd

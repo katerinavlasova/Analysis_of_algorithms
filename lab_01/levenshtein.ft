@@ -1,0 +1,224 @@
+CREATE word1 15 CHARS ALLOT
+CREATE word2 15 CHARS ALLOT
+
+: end
+  CR
+  ." Levenshtein distance: " . CR
+  ." " CR
+  clearstack
+  ;
+
+: time: ( "word" -- )
+  utime 2>R ' EXECUTE
+  utime 2R> D-
+  <# # # # # # # [CHAR] . HOLD #S #> TYPE ."  seconds" ;
+
+
+: is_zero? 0 = if 0 else -1 then ;
+: equal_lenght? = if 0 else -1 then ;
+
+: input_words
+  ." " CR
+  ." First word:" CR
+  word1 15 accept
+  ." " CR
+  ." Second word:" CR
+  word2 15 accept
+  ;
+
+
+input_words
+CONSTANT len2
+CONSTANT len1
+
+( �������, ��� ������� ��������� ����������� )
+: equal_words? 0 = if CR ." Words are equal" 0 end then ;
+: second_word_zero? 0 = if len1 end then ;
+: first_word_zero? 0 = if len2 end then ;
+
+: check_equality ( �������, ����� �� �����/��� ���.��. )
+  word1
+  len1
+  word2
+  len2
+  compare
+  equal_words?
+;
+check_equality
+: check_zero_lenght ( ����� ���� �� ���� ���. ����? )
+  len1
+  is_zero?
+  len2
+  is_zero?
+  ( is_zero1 is_zero2 -- )
+  ( ������ ������ �� ������ )
+  second_word_zero?
+  first_word_zero?
+; 
+check_zero_lenght
+
+
+( RECURSION!!!!!!!!!!! )
+: min_of_2 ( num1 num2 -- min )
+  OVER OVER = IF DROP ELSE
+  OVER OVER < IF DROP ELSE
+  SWAP DROP
+  THEN THEN 
+;
+
+
+
+: distl                         ( a1 n1 a2 n2 -- distance )
+  dup                                
+  if                                   
+      2>r dup
+    if
+      2dup 1- chars + c@ 2r@ 1- chars + c@ =
+      if
+        1- 2r> 1- recurse exit
+      else                             
+        2dup 1- 2r@ 1- recurse -rot    
+        2dup    2r@ 1- recurse -rot    
+        1- 2r> recurse min min 1+    
+      then                             
+    else                               
+      2drop  2r> swap drop
+    then
+  else
+    2drop swap drop
+  then
+;
+
+
+( LEVENST!!!!!!!!!!!. )
+len2 1 +
+CONSTANT col
+len1 1 +
+CONSTANT rows
+len1 1 + len2 1 + *
+CONSTANT size
+CREATE lev_m size CELLS ALLOT ( : len1+1 - num of rows len2+1 - num of col )
+
+lev_m size erase
+: show ( show array ) size 0 DO lev_m I cells + ? LOOP ;
+
+: [!] ( value index array -- ) swap cells + ! ;
+
+: show_matrix rows  0 ?DO ( --  . J - rows i - col )
+  col 0 ?DO lev_m J col * I + cells + ? LOOP CR LOOP ;
+
+: cost? = if 0 + else 1 + then ; ( ����� � ����������� �� ����� �� ������� )
+
+
+: levenshtein col 1 ?DO ( --  . I - rows J - cols )
+  rows 1 ?DO
+  lev_m I 1 - col * J + cells + @
+  1 +
+  lev_m I col * J 1 - + cells + @
+  1 +
+  lev_m I 1 - col * J 1 - + cells + @ 
+  word1 I 1 - chars + c@
+  word2 J 1 - chars + c@
+  cost?
+  min
+  min
+  I col * J + lev_m [!]
+  clearstack
+LOOP LOOP
+;
+
+: fill_rows ( 0 -- )
+  rows col * 0 ?DO
+  DUP
+  I lev_m [!]
+  1 +
+  col +LOOP ;
+
+: fill_col ( -- ) col 0 DO I I lev_m [!] LOOP ;
+
+
+: levenshtein_basic ( -- )
+ CR ." LEVENSHTEIN MATR." 
+ clearstack
+ 0
+ fill_rows
+ fill_col
+ clearstack
+ levenshtein
+ CR
+ ( show_matrix )
+ lev_m col rows * 1 - cells + @
+;
+
+
+( DAMERAU-LEV!!!!!!!!!!!!. )
+
+: transp? ( i j -- arr[i-2][j-2]+1 / infiniity )
+  OVER OVER 0 > 0 >
+  >r OVER OVER
+  word2 2 - chars + c@
+  word1 1 - chars + c@
+  = >r
+  OVER OVER
+  word2 1 - chars + c@ ( ??? )
+  word1 2 - chars + c@
+  = 2r>
+  and and and
+  IF lev_m I 2 - col * J 2 - + cells + @ ELSE 1000 THEN ;
+
+
+: dam-lev col 1 ?DO ( --  . I - rows J - cols )
+  rows 1 ?DO
+  lev_m I 1 - col * J + cells + @
+  1 +
+  lev_m I col * J 1 - + cells + @
+  1 +
+  lev_m I 1 - col * J 1 - + cells + @ 
+  word1 I 1 - chars + c@
+  word2 J 1 - chars + c@
+  cost?
+  min
+  min
+  ( провер. транспоз. )
+  I
+  J
+  0 > swap 0 >
+  word2 J 1 - chars + c@
+  word1 I 2 - chars + c@
+  =
+  word2 J 2 - chars + c@
+  word1 I 1 - chars + c@
+  =
+  and and and
+  IF lev_m I 2 - col * J 2 - + cells + @ ELSE 1000 THEN 
+  1 +
+  min
+  I col * J + lev_m [!]
+LOOP LOOP
+;
+
+: damerau�levenshtein
+  CR ." DAMERAU LEVENSHTEIN MATR." CR
+  clearstack
+  0
+  fill_rows
+  fill_col
+  dam-lev
+  ( show_matrix )
+  clearstack
+  lev_m col rows * 1 - cells + @
+;
+
+clearstack
+damerau�levenshtein
+show_matrix
+end
+
+levenshtein_basic
+show_matrix
+end
+
+." Recursive:"
+word1 len1 word2 len2 distl
+end
+clearstack
